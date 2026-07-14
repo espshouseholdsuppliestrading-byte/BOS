@@ -32,6 +32,8 @@ model Company {
   invoices      Invoice[]
   payments      Payment[]
   stockAllocations StockAllocation[]
+  expenses      Expense[]
+  productionCosts ProductionCost[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -95,6 +97,7 @@ model Product {
   manufacturingOrders ManufacturingOrder[]
   rawMaterialsUsed RawMaterialUsed[]
   stockAllocations StockAllocation[]
+  productionCosts ProductionCost[]
   quotationItems  QuotationItem[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -209,6 +212,7 @@ model SalesOrderItem {
   productId     String
   product       Product  @relation(fields: [productId], references: [id])
   quantity      Int
+  costPrice     Decimal  @default(0)
   sellingPrice  Decimal
   discount      Decimal  @default(0)
   total         Decimal
@@ -327,4 +331,35 @@ model StockAllocation {
   company           Company  @relation(fields: [companyId], references: [id])
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  category      String
+  subcategory   String?
+  amount        Decimal
+  description   String?
+  date          DateTime @default(now())
+  referenceId   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ProductionCost {
+  id            String   @id @default(cuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  type          String
+  category      String?
+  amount        Decimal
+  quantity      Int?
+  unit          String?
+  description   String?
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

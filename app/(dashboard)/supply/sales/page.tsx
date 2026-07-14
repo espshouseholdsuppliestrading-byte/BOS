@@ -22,12 +22,14 @@ interface Product {
   code: string
   name: string
   sellingPrice: number
+  costPrice: number
 }
 
 interface OrderItem {
   productId: string
   quantity: number
   sellingPrice: number
+  costPrice: number
   total: number
 }
 
@@ -59,7 +61,7 @@ export default function SalesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [clientId, setClientId] = useState("")
   const [discount, setDiscount] = useState(0)
-  const [items, setItems] = useState<OrderItem[]>([{ productId: "", quantity: 1, sellingPrice: 0, total: 0 }])
+  const [items, setItems] = useState<OrderItem[]>([{ productId: "", quantity: 1, sellingPrice: 0, costPrice: 0, total: 0 }])
 
   const fetchData = async () => {
     const [ordersRes, clientsRes, productsRes] = await Promise.all([
@@ -89,6 +91,7 @@ export default function SalesPage() {
         const product = products.find((p) => p.id === value)
         if (product) {
           updated[index].sellingPrice = Number(product.sellingPrice)
+          updated[index].costPrice = Number(product.costPrice)
           updated[index].total = updated[index].quantity * Number(product.sellingPrice)
         }
       }
@@ -97,7 +100,7 @@ export default function SalesPage() {
   }
 
   const addItem = () => {
-    setItems((prev) => [...prev, { productId: "", quantity: 1, sellingPrice: 0, total: 0 }])
+    setItems((prev) => [...prev, { productId: "", quantity: 1, sellingPrice: 0, costPrice: 0, total: 0 }])
   }
 
   const removeItem = (index: number) => {
@@ -118,7 +121,7 @@ export default function SalesPage() {
     })
     setClientId("")
     setDiscount(0)
-    setItems([{ productId: "", quantity: 1, sellingPrice: 0, total: 0 }])
+    setItems([{ productId: "", quantity: 1, sellingPrice: 0, costPrice: 0, total: 0 }])
     setDialogOpen(false)
     setSubmitting(false)
     fetchData()

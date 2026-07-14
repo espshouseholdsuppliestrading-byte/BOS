@@ -18,8 +18,24 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
   if (!session) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }) }
   const body = await request.json()
+  const { items, ...rest } = body
   const order = await prisma.salesOrder.create({
-    data: { ...body, salesAgentId: session.user.id, companyId: session.user.companyId },
+    data: {
+      ...rest,
+      salesAgentId: session.user.id,
+      companyId: session.user.companyId,
+      items: {
+        create: items.map((item: any) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          sellingPrice: item.sellingPrice,
+          discount: item.discount || 0,
+          total: item.total,
+          costPrice: item.costPrice || 0,
+        })),
+      },
+    },
+    include: { items: true },
   })
   return NextResponse.json(order)
 }

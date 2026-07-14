@@ -1,46 +1,104 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { redirect } from "next/navigation"
+"use client"
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Clock, CheckCircle, AlertCircle } from "lucide-react"
+import { Plus, Factory, Package, DollarSign } from "lucide-react"
+import { StatsCard } from "@/components/dashboard/stats-card"
+import Link from "next/link"
 
-export default async function ProductionPage() {
-  const session = await getServerSession(authOptions)
-  if (!session) { redirect("/login") }
+interface Product {
+  id: string
+  name: string
+  code: string
+  currentStock: number
+}
 
-  const orders = [
-    { id: "MO-001", product: "DIY Kit - Basic", quantity: 200, status: "in_progress", startDate: "2024-01-14" },
-    { id: "MO-002", product: "Refill Pack - 1L", quantity: 500, status: "completed", startDate: "2024-01-12" },
-    { id: "MO-003", product: "Finished Product A", quantity: 100, status: "pending", startDate: "2024-01-15" },
-  ]
+interface ProductionCost {
+  id: string
+  productId: string
+  product: { name: string; code: string }
+  type: string
+  category: string | null
+  amount: number
+  quantity: number | null
+  unit: string | null
+  description: string | null
+  date: string
+}
+
+export default function ProductionPage() {
+  const [productionCosts, setProductionCosts] = useState<ProductionCost[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/production-costs").then((r) => r.json()),
+      fetch("/api/products").then((r) => r.json()),
+    ]).then(([pc, p]) => {
+      setProductionCosts(Array.isArray(pc) ? pc : [])
+      setProducts(Array.isArray(p) ? p : [])
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  const totalProductionCost = productionCosts.reduce((sum, pc) => sum + Number(pc.amount), 0)
+  const totalQuantityProduced = productionCosts.reduce((sum, pc) => sum + (pc.quantity || 0), 0)
+  const uniqueProducts = new Set(productionCosts.map((pc) => pc.productId)).size
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Loading...</p></div>
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-3xl font-bold">Production</h1><p className="text-muted-foreground">Manufacturing orders and production tracking</p></div>
-        <Button><Plus className="mr-2 h-4 w-4" />New Production Order</Button>
+        <div>
+          <h1 className="text-3xl font-bold">Production</h1>
+          <p className="text-muted-foreground">Production costs and manufacturing metrics</p>
+        </div>
+        <Link href="/manufacturing/costing">
+          <Button><Plus className="mr-2 h-4 w-4" />Record Production</Button>
+        </Link>
       </div>
+
       <div className="grid gap-4 md:grid-cols-3">
-        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">In Progress</CardTitle><Clock className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">3</div><p className="text-xs text-muted-foreground">Active orders</p></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Completed</CardTitle><CheckCircle className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">25</div><p className="text-xs text-muted-foreground">This month</p></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Pending</CardTitle><AlertCircle className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">5</div><p className="text-xs text-muted-foreground">Awaiting materials</p></CardContent></Card>
+        <StatsCard title="Total Production Cost" value={`₱${totalProductionCost.toLocaleString()}`} icon={DollarSign} description="All recorded costs" />
+        <StatsCard title="Units Produced" value={totalQuantityProduced.toLocaleString()} icon={Factory} description="Total quantity produced" />
+        <StatsCard title="Products Manufactured" value={uniqueProducts.toString()} icon={Package} description="Unique products" />
       </div>
+
       <Card>
-        <CardHeader><CardTitle>Manufacturing Orders</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Production Cost Records</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
-            <TableHeader><TableRow><TableHead>Order ID</TableHead><TableHead>Product</TableHead><TableHead>Quantity</TableHead><TableHead>Start Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
-              {orders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.id}</TableCell><TableCell>{order.product}</TableCell><TableCell>{order.quantity} units</TableCell><TableCell>{order.startDate}</TableCell>
-                  <TableCell><Badge variant={order.status === "completed" ? "success" : order.status === "in_progress" ? "default" : "secondary"}>{order.status.replace("_", " ")}</Badge></TableCell>
-                  <TableCell className="text-right"><Button variant="ghost" size="sm">View</Button></TableCell>
-                </TableRow>
-              ))}
+              {productionCosts.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center">No production records found. Click &quot;Record Production&quot; to add one.</TableCell></TableRow>
+              ) : (
+                productionCosts.map((pc) => (
+                  <TableRow key={pc.id}>
+                    <TableCell className="font-medium">{pc.product?.name || "Unknown"}</TableCell>
+                    <TableCell>{pc.type}</TableCell>
+                    <TableCell>{pc.category || "-"}</TableCell>
+                    <TableCell>{pc.quantity ? `${pc.quantity} ${pc.unit || ""}` : "-"}</TableCell>
+                    <TableCell>₱{Number(pc.amount).toLocaleString()}</TableCell>
+                    <TableCell>{new Date(pc.date).toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

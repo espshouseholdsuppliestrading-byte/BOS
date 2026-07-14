@@ -17,6 +17,7 @@ import {
   Warehouse,
   Receipt,
   UserPlus,
+  Calculator,
 } from "lucide-react"
 
 interface NavItem {
@@ -37,6 +38,7 @@ const supplyNav: NavItem[] = [
   { title: "Inventory", href: "/supply/inventory", icon: Warehouse },
   { title: "Purchasing", href: "/supply/purchasing", icon: ShoppingCart },
   { title: "Finance", href: "/supply/finance", icon: Receipt },
+  { title: "Expenses", href: "/supply/expenses", icon: Receipt },
   { title: "Clients", href: "/supply/clients", icon: Users },
   { title: "Suppliers", href: "/supply/suppliers", icon: UserPlus },
   { title: "Quotations", href: "/supply/quotations", icon: FileText },
@@ -45,6 +47,7 @@ const supplyNav: NavItem[] = [
 const manufacturingNav: NavItem[] = [
   { title: "CEO Dashboard", href: "/manufacturing/ceo", icon: LayoutDashboard },
   { title: "Production", href: "/manufacturing/production", icon: Factory },
+  { title: "Costing", href: "/manufacturing/costing", icon: Calculator },
   { title: "Inventory", href: "/manufacturing/inventory", icon: Warehouse },
   { title: "Sales", href: "/manufacturing/sales", icon: TrendingUp },
   { title: "Finance", href: "/manufacturing/finance", icon: Receipt },
