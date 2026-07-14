@@ -9,9 +9,9 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const role = session.user.role?.toLowerCase() || ""
+  const role = session.user.role || ""
 
-  if (role === "super_admin" || role === "admin") {
+  if (role === "SUPER_ADMIN") {
     redirect("/holdings")
   }
 
