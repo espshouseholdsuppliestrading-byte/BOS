@@ -1,0 +1,329 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  businessType  String
+  parentId      String?
+  parent        Company? @relation("CompanyHierarchy", fields: [parentId], references: [id])
+  children      Company[] @relation("CompanyHierarchy")
+  ceoId         String?
+  users         User[]
+  departments   Department[]
+  products      Product[]
+  clients       Client[]
+  suppliers     Supplier[]
+  inventories   Inventory[]
+  inventoryMovements InventoryMovement[]
+  purchaseOrders PurchaseOrder[]
+  salesOrders   SalesOrder[]
+  quotations    Quotation[]
+  manufacturingOrders ManufacturingOrder[]
+  transactions  Transaction[]
+  invoices      Invoice[]
+  payments      Payment[]
+  stockAllocations StockAllocation[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  password      String
+  role          Role
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  departmentId  String?
+  department    Department? @relation(fields: [departmentId], references: [id])
+  salesOrders   SalesOrder[]
+  quotations    Quotation[] @relation("QuotationAgent")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum Role {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  MANAGER
+  SALES_AGENT
+  DEALER
+  BRAND_PARTNER
+  CLIENT
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  users       User[]
+  createdAt   DateTime @default(now())
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  code            String
+  name            String
+  description     String?
+  category        String
+  source          String
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id])
+  unit            String
+  costPrice       Decimal
+  sellingPrice    Decimal
+  currentStock    Int      @default(0)
+  minimumStock    Int      @default(0)
+  maximumStock    Int      @default(0)
+  warehouseLocation String?
+  status          String   @default("active")
+  inventory       Inventory[]
+  inventoryMovements InventoryMovement[]
+  salesOrderItems SalesOrderItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  manufacturingOrders ManufacturingOrder[]
+  rawMaterialsUsed RawMaterialUsed[]
+  stockAllocations StockAllocation[]
+  quotationItems  QuotationItem[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Client {
+  id            String   @id @default(cuid())
+  code          String
+  name          String
+  email         String?
+  phone         String?
+  address       String?
+  type          String
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  salesOrders   SalesOrder[]
+  quotations    Quotation[]
+  invoices      Invoice[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Supplier {
+  id            String   @id @default(cuid())
+  code          String
+  name          String
+  email         String?
+  phone         String?
+  address       String?
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  purchaseOrders PurchaseOrder[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Inventory {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  warehouse     String
+  quantity      Int      @default(0)
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@unique([productId, warehouse, companyId])
+}
+
+model InventoryMovement {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  type          String
+  quantity      Int
+  referenceId   String?
+  notes         String?
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model PurchaseOrder {
+  id            String   @id @default(cuid())
+  orderNumber   String
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id])
+  status        String   @default("pending")
+  totalAmount   Decimal
+  expectedDate  DateTime?
+  receivedDate  DateTime?
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  items         PurchaseOrderItem[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  quantity        Int
+  unitCost        Decimal
+  totalCost       Decimal
+}
+
+model SalesOrder {
+  id            String   @id @default(cuid())
+  orderNumber   String
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  salesAgentId  String
+  salesAgent    User     @relation(fields: [salesAgentId], references: [id])
+  status        String   @default("pending")
+  totalAmount   Decimal
+  discount      Decimal  @default(0)
+  commission    Decimal  @default(0)
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  items         SalesOrderItem[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SalesOrderItem {
+  id            String   @id @default(cuid())
+  salesOrderId  String
+  salesOrder    SalesOrder @relation(fields: [salesOrderId], references: [id])
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int
+  sellingPrice  Decimal
+  discount      Decimal  @default(0)
+  total         Decimal
+}
+
+model Quotation {
+  id            String   @id @default(cuid())
+  quoteNumber   String
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  salesAgentId  String
+  salesAgent    User     @relation("QuotationAgent", fields: [salesAgentId], references: [id])
+  status        String   @default("draft")
+  validUntil    DateTime
+  totalAmount   Decimal
+  notes         String?
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  items         QuotationItem[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model QuotationItem {
+  id            String   @id @default(cuid())
+  quotationId   String
+  quotation     Quotation @relation(fields: [quotationId], references: [id])
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int
+  unitPrice     Decimal
+  total         Decimal
+}
+
+model ManufacturingOrder {
+  id            String   @id @default(cuid())
+  orderNumber   String
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int
+  status        String   @default("pending")
+  startDate     DateTime?
+  completionDate DateTime?
+  totalCost     Decimal?
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  materials     RawMaterialUsed[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model RawMaterialUsed {
+  id                    String   @id @default(cuid())
+  manufacturingOrderId  String
+  manufacturingOrder    ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id])
+  productId             String
+  product               Product  @relation(fields: [productId], references: [id])
+  quantity              Int
+  unitCost              Decimal
+  totalCost             Decimal
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  type          String
+  category      String
+  amount        Decimal
+  description   String?
+  referenceId   String?
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  salesOrderId  String?
+  amount        Decimal
+  tax           Decimal  @default(0)
+  total         Decimal
+  status        String   @default("pending")
+  dueDate       DateTime
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  payments      Payment[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+  amount        Decimal
+  method        String
+  reference     String?
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model StockAllocation {
+  id                String   @id @default(cuid())
+  productId         String
+  product           Product  @relation(fields: [productId], references: [id])
+  availableQuantity Int
+  reservedQuantity  Int      @default(0)
+  approvedQuantity  Int?
+  approvedById      String?
+  approvalDate      DateTime?
+  weekStarting      DateTime
+  companyId         String
+  company           Company  @relation(fields: [companyId], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
