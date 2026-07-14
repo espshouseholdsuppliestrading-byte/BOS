@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     startDate = new Date(now.getFullYear(), 0, 1)
   }
 
-  const [salesOrders, expenses, salesOrderItems] = await Promise.all([
+  const [salesOrders, expenses, salesOrderItems, productionCosts, products] = await Promise.all([
     prisma.salesOrder.findMany({
       where: {
         companyId,
@@ -57,7 +57,17 @@ export async function GET(request: Request) {
           createdAt: { gte: startDate },
         },
       },
-      include: { salesOrder: true },
+      include: { salesOrder: true, product: true },
+    }),
+    type === "manufacturing"
+      ? prisma.productionCost.findMany({
+          where: { companyId, date: { gte: startDate } },
+          include: { product: true },
+        })
+      : [],
+    prisma.product.findMany({
+      where: { companyId },
+      select: { id: true, name: true, category: true },
     }),
   ])
 
@@ -66,12 +76,12 @@ export async function GET(request: Request) {
     0
   )
 
-  const totalCOGS = salesOrderItems.reduce(
+  const totalCOGSFromSales = salesOrderItems.reduce(
     (sum, item) => sum + Number(item.costPrice) * item.quantity,
     0
   )
 
-  const grossProfit = totalRevenue - totalCOGS
+  const grossProfit = totalRevenue - totalCOGSFromSales
   const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0
 
   const expensesByCategory: Record<string, number> = {}
@@ -125,13 +135,64 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({
+  // Manufacturing-specific data
+  const rawMaterialCosts = productionCosts
+    .filter((pc) => pc.type === "raw_material")
+    .reduce((sum, pc) => sum + Number(pc.amount), 0)
+
+  const packagingCosts = productionCosts
+    .filter((pc) => pc.type === "packaging")
+    .reduce((sum, pc) => sum + Number(pc.amount), 0)
+
+  const laborCosts = productionCosts
+    .filter((pc) => pc.type === "labor")
+    .reduce((sum, pc) => sum + Number(pc.amount), 0)
+
+  const overheadCosts = productionCosts
+    .filter((pc) => pc.type === "overhead")
+    .reduce((sum, pc) => sum + Number(pc.amount), 0)
+
+  const depreciationCosts = productionCosts
+    .filter((pc) => pc.type === "depreciation")
+    .reduce((sum, pc) => sum + Number(pc.amount), 0)
+
+  const otherProdCosts = productionCosts
+    .filter((pc) => !["raw_material", "packaging", "labor", "overhead", "depreciation"].includes(pc.type))
+    .reduce((sum, pc) => sum + Number(pc.amount), 0)
+
+  // Product profitability
+  const productProfitability = products.map((product) => {
+    const productRevenue = salesOrderItems
+      .filter((item) => item.productId === product.id)
+      .reduce((sum, item) => sum + Number(item.total), 0)
+
+    const productCOGS = salesOrderItems
+      .filter((item) => item.productId === product.id)
+      .reduce((sum, item) => sum + Number(item.costPrice) * item.quantity, 0)
+
+    const productQty = salesOrderItems
+      .filter((item) => item.productId === product.id)
+      .reduce((sum, item) => sum + item.quantity, 0)
+
+    const productProdCosts = productionCosts
+      .filter((pc) => pc.productId === product.id)
+      .reduce((sum, pc) => sum + Number(pc.amount), 0)
+
+    return {
+      name: product.name,
+      revenue: productRevenue,
+      cogs: productCOGS + productProdCosts,
+      quantity: productQty,
+      profit: productRevenue - productCOGS - productProdCosts,
+      margin: productRevenue > 0 ? ((productRevenue - productCOGS - productProdCosts) / productRevenue) * 100 : 0,
+    }
+  }).filter((p) => p.revenue > 0 || p.cogs > 0)
+
+  const response: Record<string, unknown> = {
     period,
     type,
-    startDate: startDate.toISOString(),
-    endDate: now.toISOString(),
     revenue: totalRevenue,
-    cogs: totalCOGS,
+    cogs: totalCOGSFromSales,
     grossProfit,
     grossMargin,
     expenses: expensesByCategory,
@@ -141,5 +202,20 @@ export async function GET(request: Request) {
     monthlyData,
     orderCount: salesOrders.length,
     expenseCount: expenses.length,
-  })
+  }
+
+  if (type === "manufacturing") {
+    response.manufacturing = {
+      rawMaterials: rawMaterialCosts,
+      packaging: packagingCosts,
+      labor: laborCosts,
+      overhead: overheadCosts,
+      depreciation: depreciationCosts,
+      other: otherProdCosts,
+      totalProductionCosts: rawMaterialCosts + packagingCosts + laborCosts + overheadCosts + depreciationCosts + otherProdCosts,
+    }
+    response.productProfitability = productProfitability
+  }
+
+  return NextResponse.json(response)
 }
