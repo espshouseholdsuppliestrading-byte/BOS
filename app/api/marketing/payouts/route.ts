@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   }
 
   if (status) where.status = status
-  if (agentId) where.agentId = agentId
+  if (agentId) where.userId = agentId
   if (period) where.period = period
 
   const payouts = await prisma.payout.findMany({
@@ -27,15 +27,11 @@ export async function GET(request: Request) {
     include: {
       items: {
         include: {
-          commission: {
-            include: { product: true },
-          },
+          commission: true,
         },
       },
-      agent: true,
-      commissions: {
-        include: { product: true },
-      },
+      user: { select: { id: true, name: true, email: true } },
+      commissions: true,
     },
     orderBy: { calculatedAt: "desc" },
   })
@@ -61,44 +57,54 @@ export async function POST(request: Request) {
       companyId: session.user.companyId,
       userId: agentId,
       payoutId: null,
-      status: "unpaid",
+      status: "pending",
     },
-    include: { product: true },
   })
 
   if (commissions.length === 0) {
     return NextResponse.json({ error: "No unpaid commissions found for this agent and period" }, { status: 400 })
   }
 
-  const totalAmount = commissions.reduce((sum: number, c: { amount: number }) => sum + c.amount, 0)
+  const totalAmount = commissions.reduce(
+    (sum: number, c: any) => sum + Number(c.amount),
+    0
+  )
+
+  const now = new Date()
+  const weekStart = new Date(now)
+  weekStart.setDate(now.getDate() - now.getDay())
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 6)
 
   const payout = await prisma.payout.create({
     data: {
       period,
       companyId: session.user.companyId,
-      agentId,
+      userId: agentId,
+      weekStarting: weekStart,
+      weekEnding: weekEnd,
       totalAmount,
       calculatedAt: new Date(),
       items: {
-        create: commissions.map((c: { id: string; amount: number; type: string }) => ({
+        create: commissions.map((c: any) => ({
           commissionId: c.id,
           amount: c.amount,
           type: c.type,
-          notes: null,
+          description: `Commission for order`,
         })),
       },
       commissions: {
-        connect: commissions.map((c: { id: string }) => ({ id: c.id })),
+        connect: commissions.map((c: any) => ({ id: c.id })),
       },
     },
     include: {
       items: {
         include: {
-          commission: { include: { product: true } },
+          commission: true,
         },
       },
-      agent: true,
-      commissions: { include: { product: true } },
+      user: { select: { id: true, name: true, email: true } },
+      commissions: true,
     },
   })
 
