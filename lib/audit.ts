@@ -6,8 +6,7 @@ export async function logAudit(params: {
   entity: string
   entityId?: string
   action: string
-  oldData?: any
-  newData?: any
+  details?: any
   ipAddress?: string
 }) {
   return prisma.auditLog.create({
@@ -17,8 +16,7 @@ export async function logAudit(params: {
       entity: params.entity,
       entityId: params.entityId,
       action: params.action,
-      oldData: params.oldData ? JSON.stringify(params.oldData) : undefined,
-      newData: params.newData ? JSON.stringify(params.newData) : undefined,
+      details: params.details ? JSON.parse(JSON.stringify(params.details)) : undefined,
       ipAddress: params.ipAddress,
     },
   })
