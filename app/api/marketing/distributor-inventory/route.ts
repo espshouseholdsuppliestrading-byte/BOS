@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get("userId")
+  const distributorId = searchParams.get("distributorId")
   const productId = searchParams.get("productId")
   const lowStock = searchParams.get("lowStock")
 
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     companyId: session.user.companyId,
   }
 
-  if (userId) where.userId = userId
+  if (distributorId) where.distributorId = distributorId
   if (productId) where.productId = productId
   if (lowStock === "true") {
     where.quantity = { lt: 10 }
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const inventory = await prisma.distributorInventory.findMany({
     where,
     include: {
-      user: true,
+      distributor: { select: { id: true, name: true, email: true } },
       product: true,
     },
   })
@@ -42,16 +42,16 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { userId, productId, quantity } = body
+  const { distributorId, productId, quantity, costPrice } = body
 
-  if (!userId || !productId || quantity === undefined) {
-    return NextResponse.json({ error: "userId, productId, and quantity are required" }, { status: 400 })
+  if (!distributorId || !productId || quantity === undefined) {
+    return NextResponse.json({ error: "distributorId, productId, and quantity are required" }, { status: 400 })
   }
 
   const existing = await prisma.distributorInventory.findFirst({
     where: {
       companyId: session.user.companyId,
-      userId,
+      distributorId,
       productId,
     },
   })
@@ -63,24 +63,28 @@ export async function POST(request: Request) {
       where: { id: existing.id },
       data: {
         quantity: existing.quantity + quantity,
+        available: existing.available + quantity,
         lastRestocked: new Date(),
       },
       include: {
-        user: true,
+        distributor: { select: { id: true, name: true, email: true } },
         product: true,
       },
     })
   } else {
+    const product = await prisma.product.findUnique({ where: { id: productId } })
     inventory = await prisma.distributorInventory.create({
       data: {
         companyId: session.user.companyId,
-        userId,
+        distributorId,
         productId,
         quantity,
+        available: quantity,
+        costPrice: costPrice || product?.costPrice || 0,
         lastRestocked: new Date(),
       },
       include: {
-        user: true,
+        distributor: { select: { id: true, name: true, email: true } },
         product: true,
       },
     })
