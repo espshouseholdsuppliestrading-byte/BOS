@@ -14,11 +14,8 @@ export async function GET() {
       id: true,
       code: true,
       name: true,
-      industry: true,
-      address: true,
-      phone: true,
-      email: true,
-      status: true,
+      businessType: true,
+      parentId: true,
       createdAt: true,
       _count: {
         select: {
