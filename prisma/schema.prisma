@@ -63,6 +63,7 @@ model User {
   sponsorId     String?
   sponsor       User?    @relation("SponsorRelation", fields: [sponsorId], references: [id])
   sponsoredUsers User[]  @relation("SponsorRelation")
+  status        String   @default("active")
   distributorInventory DistributorInventory[]
   commissions   Commission[]
   payouts       Payout[]
@@ -123,6 +124,7 @@ model Product {
   quotationItems  QuotationItem[]
   commissionRules CommissionRule[]
   distributorInventories DistributorInventory[]
+  commissions   Commission[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -219,6 +221,7 @@ model SalesOrder {
   salesAgentId  String
   salesAgent    User     @relation("SalesAgentOrders", fields: [salesAgentId], references: [id])
   status        String   @default("pending")
+  paymentStatus String   @default("unpaid")
   totalAmount   Decimal
   discount      Decimal  @default(0)
   commission    Decimal  @default(0)
@@ -440,6 +443,7 @@ model DistributorInventory {
   available     Int      @default(0)
   reserved      Int      @default(0)
   costPrice     Decimal
+  lastRestocked DateTime?
   companyId     String
   company       Company  @relation(fields: [companyId], references: [id])
   createdAt     DateTime @default(now())
@@ -455,11 +459,14 @@ model Commission {
   user          User     @relation(fields: [userId], references: [id])
   type          String
   amount        Decimal
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
   ruleId        String?
   rule          CommissionRule? @relation(fields: [ruleId], references: [id])
   territoryId   String?
   territory     Territory? @relation(fields: [territoryId], references: [id])
   status        String   @default("pending")
+  calculatedAt  DateTime @default(now())
   payoutId      String?
   payout        Payout?  @relation(fields: [payoutId], references: [id])
   payoutItems   PayoutItem[]
@@ -472,6 +479,7 @@ model Payout {
   id            String   @id @default(cuid())
   userId        String
   user          User     @relation(fields: [userId], references: [id])
+  period        String?
   weekStarting  DateTime
   weekEnding    DateTime
   totalAmount   Decimal
@@ -480,6 +488,7 @@ model Payout {
   paymentReference String?
   approvedById  String?
   approvedBy    User?    @relation("ApprovedPayout", fields: [approvedById], references: [id])
+  calculatedAt  DateTime @default(now())
   approvedAt    DateTime?
   releasedAt    DateTime?
   paidAt        DateTime?
