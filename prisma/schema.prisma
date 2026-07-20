@@ -34,6 +34,12 @@ model Company {
   stockAllocations StockAllocation[]
   expenses      Expense[]
   productionCosts ProductionCost[]
+  territories   Territory[]
+  commissionRules CommissionRule[]
+  distributorInventories DistributorInventory[]
+  commissions   Commission[]
+  payouts       Payout[]
+  auditLogs     AuditLog[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -48,8 +54,21 @@ model User {
   company       Company  @relation(fields: [companyId], references: [id])
   departmentId  String?
   department    Department? @relation(fields: [departmentId], references: [id])
-  salesOrders   SalesOrder[]
+  salesOrders   SalesOrder[] @relation("SalesAgentOrders")
   quotations    Quotation[] @relation("QuotationAgent")
+  territoryId   String?
+  territory     Territory? @relation(fields: [territoryId], references: [id])
+  rank          String?
+  monthlyVolume Decimal  @default(0)
+  sponsorId     String?
+  sponsor       User?    @relation("SponsorRelation", fields: [sponsorId], references: [id])
+  sponsoredUsers User[]  @relation("SponsorRelation")
+  distributorInventory DistributorInventory[]
+  commissions   Commission[]
+  payouts       Payout[]
+  approvedPayouts Payout[] @relation("ApprovedPayout")
+  auditLogs     AuditLog[]
+  distributorOrders SalesOrder[] @relation("DistributorOrder")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -62,6 +81,9 @@ enum Role {
   DEALER
   BRAND_PARTNER
   CLIENT
+  RESELLER
+  DISTRIBUTOR
+  TERRITORY_PARTNER
 }
 
 model Department {
@@ -99,6 +121,8 @@ model Product {
   stockAllocations StockAllocation[]
   productionCosts ProductionCost[]
   quotationItems  QuotationItem[]
+  commissionRules CommissionRule[]
+  distributorInventories DistributorInventory[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -193,7 +217,7 @@ model SalesOrder {
   clientId      String
   client        Client   @relation(fields: [clientId], references: [id])
   salesAgentId  String
-  salesAgent    User     @relation(fields: [salesAgentId], references: [id])
+  salesAgent    User     @relation("SalesAgentOrders", fields: [salesAgentId], references: [id])
   status        String   @default("pending")
   totalAmount   Decimal
   discount      Decimal  @default(0)
@@ -201,6 +225,12 @@ model SalesOrder {
   companyId     String
   company       Company  @relation(fields: [companyId], references: [id])
   items         SalesOrderItem[]
+  distributorId String?
+  distributor   User?    @relation("DistributorOrder", fields: [distributorId], references: [id])
+  territoryId   String?
+  territory     Territory? @relation(fields: [territoryId], references: [id])
+  commissionCalculated Boolean @default(false)
+  commissions   Commission[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -362,4 +392,126 @@ model ProductionCost {
   date          DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model Territory {
+  id            String   @id @default(cuid())
+  name          String
+  type          String
+  parentId      String?
+  parent        Territory? @relation("TerritoryHierarchy", fields: [parentId], references: [id])
+  children      Territory[] @relation("TerritoryHierarchy")
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  users         User[]
+  salesOrders   SalesOrder[]
+  commissionRules CommissionRule[]
+  commissions   Commission[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CommissionRule {
+  id            String   @id @default(cuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
+  userRole      String
+  territoryId   String?
+  territory     Territory? @relation(fields: [territoryId], references: [id])
+  type          String
+  amount        Decimal
+  overrideUp    Boolean  @default(false)
+  overridePercent Decimal?
+  status        String   @default("active")
+  commissions   Commission[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DistributorInventory {
+  id            String   @id @default(cuid())
+  distributorId String
+  distributor   User     @relation(fields: [distributorId], references: [id])
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int      @default(0)
+  available     Int      @default(0)
+  reserved      Int      @default(0)
+  costPrice     Decimal
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@unique([distributorId, productId, companyId])
+}
+
+model Commission {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         SalesOrder @relation(fields: [orderId], references: [id])
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  type          String
+  amount        Decimal
+  ruleId        String?
+  rule          CommissionRule? @relation(fields: [ruleId], references: [id])
+  territoryId   String?
+  territory     Territory? @relation(fields: [territoryId], references: [id])
+  status        String   @default("pending")
+  payoutId      String?
+  payout        Payout?  @relation(fields: [payoutId], references: [id])
+  payoutItems   PayoutItem[]
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model Payout {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  weekStarting  DateTime
+  weekEnding    DateTime
+  totalAmount   Decimal
+  status        String   @default("pending")
+  paymentMethod String?
+  paymentReference String?
+  approvedById  String?
+  approvedBy    User?    @relation("ApprovedPayout", fields: [approvedById], references: [id])
+  approvedAt    DateTime?
+  releasedAt    DateTime?
+  paidAt        DateTime?
+  items         PayoutItem[]
+  commissions   Commission[]
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PayoutItem {
+  id            String   @id @default(cuid())
+  payoutId      String
+  payout        Payout   @relation(fields: [payoutId], references: [id])
+  commissionId  String
+  commission    Commission @relation(fields: [commissionId], references: [id])
+  type          String
+  amount        Decimal
+  description   String?
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  action        String
+  entity        String
+  entityId      String?
+  details       Json?
+  ipAddress     String?
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  createdAt     DateTime @default(now())
 }
