@@ -74,7 +74,7 @@ export default function DistributorDashboard() {
   if (!data) return <div className="p-6">Failed to load dashboard</div>
 
   const { user, distributorOrders, commissions } = data
-  const inventory = data.user.distributorInventory as unknown as DistributorInventoryItem[]
+  const inventory = data.user.distributorInventory
   const totalInventoryItems = inventory?.length || 0
   const totalDistributorOrders = distributorOrders.length
   const pendingCommissions = commissions
