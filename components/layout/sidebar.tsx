@@ -18,6 +18,10 @@ import {
   Receipt,
   UserPlus,
   Calculator,
+  MapPin,
+  ClipboardList,
+  DollarSign,
+  Shield,
 } from "lucide-react"
 
 interface NavItem {
@@ -53,6 +57,18 @@ const manufacturingNav: NavItem[] = [
   { title: "Finance", href: "/manufacturing/finance", icon: Receipt },
 ]
 
+const marketingNav: NavItem[] = [
+  { title: "Dashboard", href: "/marketing", icon: LayoutDashboard },
+  { title: "Agents", href: "/marketing/agents", icon: Users },
+  { title: "Distributors", href: "/marketing/distributors", icon: Users },
+  { title: "Territories", href: "/marketing/territories", icon: MapPin },
+  { title: "Commission Rules", href: "/marketing/commission-rules", icon: ClipboardList },
+  { title: "Orders", href: "/marketing/orders", icon: ShoppingCart },
+  { title: "Distributor Inventory", href: "/marketing/inventory", icon: Package },
+  { title: "Payouts", href: "/marketing/payouts", icon: DollarSign },
+  { title: "Audit Trail", href: "/marketing/audit", icon: Shield },
+]
+
 interface SidebarProps {
   userRole: string
   companyName: string
@@ -67,6 +83,7 @@ export function Sidebar({ userRole, companyName }: SidebarProps) {
         { title: "ESPS Holdings", items: holdingsNav },
         { title: "ESPS Supply Corp", items: supplyNav },
         { title: "ESPS Manufacturing", items: manufacturingNav },
+        { title: "ESPS Sales & Marketing", items: marketingNav },
       ]
     }
 
@@ -76,6 +93,10 @@ export function Sidebar({ userRole, companyName }: SidebarProps) {
 
     if (companyName.includes("Manufacturing")) {
       return [{ title: "ESPS Manufacturing", items: manufacturingNav }]
+    }
+
+    if (companyName.includes("Marketing")) {
+      return [{ title: "ESPS Sales & Marketing", items: marketingNav }]
     }
 
     return []
