@@ -40,9 +40,9 @@ export async function GET(request: Request) {
       items: {
         include: { product: true },
       },
-      customer: true,
-      salesAgent: true,
-      distributor: true,
+      client: true,
+      salesAgent: { select: { id: true, name: true, email: true } },
+      distributor: { select: { id: true, name: true, email: true } },
       territory: true,
     },
     orderBy: { createdAt: "desc" },
@@ -58,10 +58,10 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { customerId, salesAgentId, distributorId, territoryId, items, paymentStatus } = body
+  const { clientId, salesAgentId, distributorId, territoryId, items, paymentStatus } = body
 
-  if (!customerId || !items || items.length === 0) {
-    return NextResponse.json({ error: "customerId and items are required" }, { status: 400 })
+  if (!clientId || !items || items.length === 0) {
+    return NextResponse.json({ error: "clientId and items are required" }, { status: 400 })
   }
 
   const today = new Date()
@@ -86,18 +86,19 @@ export async function POST(request: Request) {
     data: {
       orderNumber,
       companyId: session.user.companyId,
-      customerId,
-      salesAgentId: salesAgentId || null,
+      clientId,
+      salesAgentId: salesAgentId || session.user.id,
       distributorId: distributorId || null,
       territoryId: territoryId || null,
       totalAmount,
       paymentStatus: paymentStatus || "unpaid",
       items: {
-        create: items.map((item: { productId: string; quantity: number; unitPrice: number }) => ({
+        create: items.map((item: { productId: string; quantity: number; unitPrice: number; costPrice?: number }) => ({
           productId: item.productId,
           quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          commissionAmount: 0,
+          sellingPrice: item.unitPrice,
+          costPrice: item.costPrice || 0,
+          total: item.quantity * item.unitPrice,
         })),
       },
     },
