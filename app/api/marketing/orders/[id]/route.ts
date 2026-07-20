@@ -16,9 +16,9 @@ export async function GET(
     where: { id: params.id, companyId: session.user.companyId },
     include: {
       items: { include: { product: true } },
-      customer: true,
-      salesAgent: true,
-      distributor: true,
+      client: true,
+      salesAgent: { select: { id: true, name: true, email: true } },
+      distributor: { select: { id: true, name: true, email: true } },
       territory: true,
       commissions: true,
     },
@@ -64,11 +64,12 @@ export async function PUT(
     )
     data.totalAmount = totalAmount
     data.items = {
-      create: items.map((item: { productId: string; quantity: number; unitPrice: number }) => ({
+      create: items.map((item: { productId: string; quantity: number; unitPrice: number; costPrice?: number }) => ({
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        commissionAmount: 0,
+        sellingPrice: item.unitPrice,
+        costPrice: item.costPrice || 0,
+        total: item.quantity * item.unitPrice,
       })),
     }
   }
@@ -78,9 +79,9 @@ export async function PUT(
     data,
     include: {
       items: { include: { product: true } },
-      customer: true,
-      salesAgent: true,
-      distributor: true,
+      client: true,
+      salesAgent: { select: { id: true, name: true, email: true } },
+      distributor: { select: { id: true, name: true, email: true } },
       territory: true,
     },
   })
