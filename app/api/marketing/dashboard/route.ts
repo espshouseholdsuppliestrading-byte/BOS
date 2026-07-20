@@ -48,7 +48,7 @@ export async function GET() {
     prisma.salesOrder.findMany({
       where: { companyId },
       include: {
-        customer: { select: { name: true } },
+        client: { select: { name: true } },
         salesAgent: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
