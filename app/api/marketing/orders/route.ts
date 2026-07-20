@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { calculateCommissions } from "@/lib/commission"
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions)
@@ -106,6 +107,9 @@ export async function POST(request: Request) {
       items: { include: { product: true } },
     },
   })
+
+  // Calculate commissions for this order
+  await calculateCommissions(order.id, session.user.companyId).catch(console.error)
 
   return NextResponse.json(order, { status: 201 })
 }
