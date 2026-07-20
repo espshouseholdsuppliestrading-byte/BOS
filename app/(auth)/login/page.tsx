@@ -31,7 +31,17 @@ export default function LoginPage() {
       setError("Invalid email or password")
       setLoading(false)
     } else {
-      router.push("/")
+      const res = await fetch("/api/auth/session")
+      const session = await res.json()
+
+      if (session?.user?.role === "SUPER_ADMIN") {
+        router.push("/holdings")
+      } else if (["RESELLER", "DISTRIBUTOR", "TERRITORY_PARTNER"].includes(session?.user?.role)) {
+        router.push("/marketing")
+      } else {
+        // For COMPANY_ADMIN and others, redirect to holdings by default
+        router.push("/holdings")
+      }
       router.refresh()
     }
   }
