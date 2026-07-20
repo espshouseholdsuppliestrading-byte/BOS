@@ -75,7 +75,7 @@ export async function calculateCommissions(orderId: string, companyId: string): 
               },
             })
             for (const parentUser of parentUsers) {
-              const overrideAmount = (Number(item.sellingPrice) * rule.overridePercent) / 100
+              const overrideAmount = (Number(item.sellingPrice) * Number(rule.overridePercent)) / 100
               commissionsToCreate.push({
                 orderId: order.id,
                 userId: parentUser.id,
