@@ -19,11 +19,11 @@ export async function GET(
     include: {
       items: {
         include: {
-          commission: { include: { product: true } },
+          commission: true,
         },
       },
-      agent: true,
-      commissions: { include: { product: true } },
+      user: { select: { id: true, name: true, email: true } },
+      commissions: true,
     },
   })
 
@@ -74,6 +74,7 @@ export async function PUT(
 
   const data: Record<string, unknown> = { status: newStatus }
   if (newStatus === "approved") data.approvedAt = new Date()
+  if (newStatus === "approved") data.approvedById = session.user.id
   if (newStatus === "released") data.releasedAt = new Date()
   if (newStatus === "paid") data.paidAt = new Date()
 
@@ -83,11 +84,11 @@ export async function PUT(
     include: {
       items: {
         include: {
-          commission: { include: { product: true } },
+          commission: true,
         },
       },
-      agent: true,
-      commissions: { include: { product: true } },
+      user: { select: { id: true, name: true, email: true } },
+      commissions: true,
     },
   })
 
