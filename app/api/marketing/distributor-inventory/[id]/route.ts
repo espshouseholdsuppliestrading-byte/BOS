@@ -15,7 +15,7 @@ export async function GET(
   const inventory = await prisma.distributorInventory.findFirst({
     where: { id: params.id, companyId: session.user.companyId },
     include: {
-      user: true,
+      distributor: { select: { id: true, name: true, email: true } },
       product: true,
     },
   })
@@ -45,18 +45,18 @@ export async function PUT(
   }
 
   const body = await request.json()
-  const { quantity, userId, productId } = body
+  const { quantity, available, reserved } = body
 
   const data: Record<string, unknown> = {}
   if (quantity !== undefined) data.quantity = quantity
-  if (userId) data.userId = userId
-  if (productId) data.productId = productId
+  if (available !== undefined) data.available = available
+  if (reserved !== undefined) data.reserved = reserved
 
   const inventory = await prisma.distributorInventory.update({
     where: { id: params.id },
     data,
     include: {
-      user: true,
+      distributor: { select: { id: true, name: true, email: true } },
       product: true,
     },
   })
