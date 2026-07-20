@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import Image from "next/image"
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -24,26 +22,9 @@ export default function LoginPage() {
     const result = await signIn("credentials", {
       email,
       password,
-      redirect: false,
+      redirect: true,
+      callbackUrl: "/",
     })
-
-    if (result?.error) {
-      setError("Invalid email or password")
-      setLoading(false)
-    } else {
-      const res = await fetch("/api/auth/session")
-      const session = await res.json()
-
-      if (session?.user?.role === "SUPER_ADMIN") {
-        router.push("/holdings")
-      } else if (["RESELLER", "DISTRIBUTOR", "TERRITORY_PARTNER"].includes(session?.user?.role)) {
-        router.push("/marketing")
-      } else {
-        // For COMPANY_ADMIN and others, redirect to holdings by default
-        router.push("/holdings")
-      }
-      router.refresh()
-    }
   }
 
   return (
