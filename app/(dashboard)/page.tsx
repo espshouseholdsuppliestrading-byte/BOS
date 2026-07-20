@@ -1,34 +1,38 @@
-"use client"
+import { getServerSession } from "next-auth"
+import { redirect } from "next/navigation"
+import { authOptions } from "@/lib/auth"
+import { prisma } from "@/lib/db"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+export default async function RootPage() {
+  const session = await getServerSession(authOptions)
 
-export default function RootPage() {
-  const router = useRouter()
-  const { data: session, status } = useSession()
+  if (!session) {
+    redirect("/login")
+  }
 
-  useEffect(() => {
-    if (status === "loading") return
-    if (!session) {
-      router.push("/login")
-      return
-    }
+  const role = session.user.role
+  const companyId = session.user.companyId
 
-    const role = session.user.role
+  if (role === "SUPER_ADMIN") {
+    redirect("/holdings")
+  }
 
-    if (role === "SUPER_ADMIN") {
-      router.push("/holdings")
-    } else if (["RESELLER", "DISTRIBUTOR", "TERRITORY_PARTNER"].includes(role)) {
-      router.push("/marketing")
-    } else {
-      router.push("/holdings")
-    }
-  }, [session, status, router])
+  if (["RESELLER", "DISTRIBUTOR", "TERRITORY_PARTNER"].includes(role)) {
+    redirect("/marketing")
+  }
 
-  return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="text-muted-foreground">Redirecting...</div>
-    </div>
-  )
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { name: true },
+  })
+
+  if (company?.name?.includes("Marketing")) {
+    redirect("/marketing")
+  } else if (company?.name?.includes("Manufacturing")) {
+    redirect("/manufacturing/ceo")
+  } else if (company?.name?.includes("Supply")) {
+    redirect("/supply/ceo")
+  } else {
+    redirect("/holdings")
+  }
 }
